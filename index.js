@@ -6,7 +6,9 @@ import {
   Events,
   GatewayIntentBits,
   Partials,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  REST,
+  Routes
 } from 'discord.js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -20,6 +22,9 @@ const RED = 0xef4135;
 const DATA_DIR = path.resolve('data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const ownerIds = new Set((process.env.OWNER_IDS || '').split(',').map((id) => id.trim()).filter(Boolean));
+const requiredModRoleId = process.env.REQUIRED_MOD_ROLE_ID || '1508156771569504428';
+const autoRegisterCommands = process.env.REGISTER_COMMANDS_ON_START !== 'false';
+const registerGlobalCommands = process.env.REGISTER_GLOBAL_COMMANDS !== 'false';
 
 const client = new Client({
   intents: [
@@ -103,6 +108,38 @@ function isProtectedModerator(member) {
   return member.permissions.has(PermissionFlagsBits.Administrator) || ownerIds.has(member.id);
 }
 
+async function registerSlashCommands() {
+  const token = process.env.DISCORD_TOKEN;
+  const guildId = process.env.GUILD_ID;
+  const clientId = process.env.CLIENT_ID || client.user.id;
+
+  if (!token || !clientId || !guildId) {
+    console.log('Commandes slash non publiees: DISCORD_TOKEN, CLIENT_ID ou GUILD_ID manquant.');
+    return;
+  }
+
+  const rest = new REST({ version: '10' }).setToken(token);
+  const commandBody = commands.map((command) => command.toJSON());
+
+  console.log(`Publication des commandes slash sur le serveur ${guildId}...`);
+  const guildCommands = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandBody });
+  console.log(`${guildCommands.length} commandes slash serveur publiees avec succes.`);
+
+  if (registerGlobalCommands) {
+    console.log('Publication des commandes slash globales pour affichage sur le profil du bot...');
+    const globalCommands = await rest.put(Routes.applicationCommands(clientId), { body: commandBody });
+    console.log(`${globalCommands.length} commandes slash globales publiees avec succes.`);
+  }
+
+  console.log(`Acces aux commandes reserve au role ${requiredModRoleId}.`);
+}
+
+async function memberHasRequiredRole(interaction) {
+  if (!requiredModRoleId) return true;
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  return Boolean(member?.roles.cache.has(requiredModRoleId));
+}
+
 async function ensureMuteRole(guild) {
   const config = getConfig(guild.id);
   let role = config.muteRoleId ? await guild.roles.fetch(config.muteRoleId).catch(() => null) : null;
@@ -148,6 +185,11 @@ async function muteMember(member, minutes, reason, moderatorLabel = 'Protection 
 
 client.once(Events.ClientReady, async () => {
   await loadStore();
+  if (autoRegisterCommands) {
+    await registerSlashCommands().catch((error) => {
+      console.error('Erreur pendant la publication des commandes slash:', error);
+    });
+  }
   console.log(`Connecte en tant que ${client.user.tag}`);
 });
 
@@ -224,6 +266,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const config = getConfig(interaction.guild.id);
 
   try {
+    if (!(await memberHasRequiredRole(interaction))) {
+      return replySafe(interaction, {
+        embeds: [officialEmbed('Acces refuse', `Cette commande est reservee au role <@&${requiredModRoleId}>.`, RED)],
+        ephemeral: true
+      });
+    }
+
     if (interaction.commandName === 'help') {
       const list = commands.map((command) => `/${command.name} - ${command.description}`).join('\n');
       return replySafe(interaction, { embeds: [officialEmbed('Commandes disponibles', list)], ephemeral: true });

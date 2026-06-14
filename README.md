@@ -39,11 +39,27 @@ npm start
    - `DISCORD_TOKEN`
    - `CLIENT_ID`
    - `GUILD_ID`
+   - `REQUIRED_MOD_ROLE_ID=1508156771569504428`
+   - `REGISTER_COMMANDS_ON_START=true`
+   - `REGISTER_GLOBAL_COMMANDS=true`
    - `OWNER_IDS`
    - `DEFAULT_LOG_CHANNEL_ID` optionnel
    - `DEFAULT_MUTE_ROLE_ID` optionnel
-4. Lance une fois `npm run deploy` localement ou dans un Railway job pour publier les commandes.
-5. Le service demarre avec `npm start`.
+4. Le service demarre avec `npm start`.
+
+Au demarrage, Railway doit afficher :
+
+```text
+Publication des commandes slash sur le serveur ...
+... commandes slash serveur publiees avec succes.
+Publication des commandes slash globales pour affichage sur le profil du bot...
+... commandes slash globales publiees avec succes.
+Acces aux commandes reserve au role 1508156771569504428.
+```
+
+Tu peux aussi lancer `npm run deploy` localement si tu veux republier les commandes manuellement.
+
+Les commandes serveur arrivent normalement rapidement. Les commandes globales, celles visibles sur le profil du bot, peuvent prendre quelques minutes avant d'apparaitre chez Discord.
 
 ## Permissions Discord conseillees
 

@@ -1,6 +1,5 @@
 import {
   ChannelType,
-  PermissionFlagsBits,
   SlashCommandBuilder
 } from 'discord.js';
 
@@ -16,7 +15,6 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('setup')
     .setDescription('Configure les salons et roles de moderation.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator.toString())
     .addChannelOption((option) =>
       option
         .setName('logs')
@@ -34,7 +32,6 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('config')
     .setDescription('Active ou regle les protections automatiques.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator.toString())
     .addStringOption((option) =>
       option
         .setName('option')
@@ -63,14 +60,12 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('warn')
     .setDescription('Adresse un avertissement officiel.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers.toString())
     .addUserOption((option) => option.setName('membre').setDescription('Membre vise').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('mute')
     .setDescription('Mute temporairement un membre.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers.toString())
     .addUserOption((option) => option.setName('membre').setDescription('Membre vise').setRequired(true))
     .addIntegerOption((option) => option.setName('minutes').setDescription('Duree en minutes').setRequired(true).setMinValue(1).setMaxValue(40320))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false)),
@@ -78,21 +73,18 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('unmute')
     .setDescription("Retire le mute d'un membre.")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers.toString())
     .addUserOption((option) => option.setName('membre').setDescription('Membre vise').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('kick')
     .setDescription('Exclut un membre du serveur.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers.toString())
     .addUserOption((option) => option.setName('membre').setDescription('Membre vise').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('ban')
     .setDescription('Bannit un membre du serveur.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers.toString())
     .addUserOption((option) => option.setName('membre').setDescription('Membre vise').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false))
     .addIntegerOption((option) => option.setName('jours_messages').setDescription('Jours de messages a supprimer').setRequired(false).setMinValue(0).setMaxValue(7)),
@@ -100,33 +92,28 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('unban')
     .setDescription('Debannit un utilisateur par ID.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers.toString())
     .addStringOption((option) => option.setName('id').setDescription('ID Discord').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('clear')
     .setDescription('Supprime un nombre de messages.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages.toString())
     .addIntegerOption((option) => option.setName('nombre').setDescription('Entre 1 et 100').setRequired(true).setMinValue(1).setMaxValue(100)),
 
   new SlashCommandBuilder()
     .setName('slowmode')
     .setDescription('Regle le mode lent du salon.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels.toString())
     .addIntegerOption((option) => option.setName('secondes').setDescription('0 pour desactiver').setRequired(true).setMinValue(0).setMaxValue(21600)),
 
   new SlashCommandBuilder()
     .setName('lockdown')
     .setDescription('Verrouille ou deverrouille le salon actuel.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels.toString())
     .addBooleanOption((option) => option.setName('actif').setDescription('Etat du verrouillage').setRequired(true))
     .addStringOption((option) => option.setName('raison').setDescription('Motif').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('lockrole')
     .setDescription('Gere les roles proteges contre les modifications non autorisees.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator.toString())
     .addSubcommand((sub) => sub.setName('add').setDescription('Protege un role').addRoleOption((option) => option.setName('role').setDescription('Role').setRequired(true)))
     .addSubcommand((sub) => sub.setName('remove').setDescription('Retire la protection').addRoleOption((option) => option.setName('role').setDescription('Role').setRequired(true)))
     .addSubcommand((sub) => sub.setName('list').setDescription('Liste les roles proteges')),
@@ -134,7 +121,6 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('lockchannel')
     .setDescription('Gere les salons proteges contre les modifications non autorisees.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator.toString())
     .addSubcommand((sub) => sub.setName('add').setDescription('Protege un salon').addChannelOption((option) => option.setName('salon').setDescription('Salon').setRequired(true)))
     .addSubcommand((sub) => sub.setName('remove').setDescription('Retire la protection').addChannelOption((option) => option.setName('salon').setDescription('Salon').setRequired(true)))
     .addSubcommand((sub) => sub.setName('list').setDescription('Liste les salons proteges'))

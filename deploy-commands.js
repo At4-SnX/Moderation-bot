@@ -5,7 +5,10 @@ import { commands } from './src/commands.js';
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID;
-const requiredModRoleId = process.env.REQUIRED_MOD_ROLE_ID || '1508156771569504428';
+const requiredModRoleIds = (process.env.REQUIRED_MOD_ROLE_IDS || process.env.REQUIRED_MOD_ROLE_ID || '1508156771569504428,1508184761380638820')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
 const registerGlobalCommands = process.env.REGISTER_GLOBAL_COMMANDS !== 'false';
 
 if (!token || !clientId || !guildId) {
@@ -32,7 +35,7 @@ try {
     console.log(`${globalCommands.length} commandes slash globales publiees avec succes.`);
   }
 
-  console.log(`Acces aux commandes reserve au role ${requiredModRoleId}.`);
+  console.log(`Acces aux commandes reserve aux roles ${requiredModRoleIds.join(', ')}.`);
 } catch (error) {
   console.error('Erreur pendant la publication des commandes:', error);
   process.exit(1);

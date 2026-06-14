@@ -8,7 +8,8 @@ import {
   Partials,
   PermissionFlagsBits,
   REST,
-  Routes
+  Routes,
+  ActivityType
 } from 'discord.js';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -22,9 +23,13 @@ const RED = 0xef4135;
 const DATA_DIR = path.resolve('data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 const ownerIds = new Set((process.env.OWNER_IDS || '').split(',').map((id) => id.trim()).filter(Boolean));
-const requiredModRoleId = process.env.REQUIRED_MOD_ROLE_ID || '1508156771569504428';
+const requiredModRoleIds = (process.env.REQUIRED_MOD_ROLE_IDS || process.env.REQUIRED_MOD_ROLE_ID || '1508156771569504428,1508184761380638820')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
 const autoRegisterCommands = process.env.REGISTER_COMMANDS_ON_START !== 'false';
 const registerGlobalCommands = process.env.REGISTER_GLOBAL_COMMANDS !== 'false';
+const presenceText = process.env.PRESENCE_TEXT || '〃Gendarmerie EHRP - IS';
 
 const client = new Client({
   intents: [
@@ -82,10 +87,11 @@ function getConfig(guildId) {
 function officialEmbed(title, description, color = BLUE) {
   return new EmbedBuilder()
     .setColor(color)
+    .setAuthor({ name: 'Gendarmerie EHRP - IS | Brigade numerique' })
     .setTitle(`🔵 ${title}`)
-    .setDescription(description)
+    .setDescription(`🔷 **Gendarmerie EHRP - IS**\n\n${description}`)
     .setTimestamp()
-    .setFooter({ text: 'Gendarmerie Nationale - Brigade Numerique' });
+    .setFooter({ text: 'Gendarmerie Nationale - Securite, ordre et discipline' });
 }
 
 async function replySafe(interaction, payload) {
@@ -131,13 +137,17 @@ async function registerSlashCommands() {
     console.log(`${globalCommands.length} commandes slash globales publiees avec succes.`);
   }
 
-  console.log(`Acces aux commandes reserve au role ${requiredModRoleId}.`);
+  console.log(`Acces aux commandes reserve aux roles ${requiredModRoleIds.join(', ')}.`);
 }
 
 async function memberHasRequiredRole(interaction) {
-  if (!requiredModRoleId) return true;
+  if (requiredModRoleIds.length === 0) return true;
   const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-  return Boolean(member?.roles.cache.has(requiredModRoleId));
+  return Boolean(member && requiredModRoleIds.some((roleId) => member.roles.cache.has(roleId)));
+}
+
+function requiredRolesLabel() {
+  return requiredModRoleIds.map((roleId) => `<@&${roleId}>`).join(' ou ');
 }
 
 async function ensureMuteRole(guild) {
@@ -178,13 +188,17 @@ async function muteMember(member, minutes, reason, moderatorLabel = 'Protection 
   await notifyUser(
     member.user,
     'Sanction administrative',
-    `Vous avez ete mute sur **${member.guild.name}** pendant **${minutes} minute(s)**.\nMotif: **${reason || 'Non precise'}**.`
+    `Une mesure de moderation vient d'etre appliquee a votre encontre sur **${member.guild.name}**.\n\n**Nature de la mesure :** mute temporaire\n**Duree :** ${minutes} minute(s)\n**Motif retenu :** ${reason || 'Non precise'}\n\nMerci de respecter le reglement interne afin d'eviter toute nouvelle procedure.`
   );
   await logAction(member.guild, officialEmbed('Mute applique', `Membre: ${member.user.tag}\nDuree: ${minutes} minute(s)\nMotif: ${reason || 'Non precise'}\nAgent: ${moderatorLabel}`, RED));
 }
 
 client.once(Events.ClientReady, async () => {
   await loadStore();
+  client.user.setPresence({
+    activities: [{ name: presenceText, type: ActivityType.Watching }],
+    status: 'online'
+  });
   if (autoRegisterCommands) {
     await registerSlashCommands().catch((error) => {
       console.error('Erreur pendant la publication des commandes slash:', error);
@@ -268,18 +282,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (!(await memberHasRequiredRole(interaction))) {
       return replySafe(interaction, {
-        embeds: [officialEmbed('Acces refuse', `Cette commande est reservee au role <@&${requiredModRoleId}>.`, RED)],
+        embeds: [officialEmbed('Acces refuse', `Votre profil ne dispose pas de l'habilitation necessaire pour utiliser le panneau de moderation.\n\n**Roles autorises :** ${requiredRolesLabel()}\n\nSi vous pensez qu'il s'agit d'une erreur, contactez l'etat-major ou un administrateur du serveur.`, RED)],
         ephemeral: true
       });
     }
 
     if (interaction.commandName === 'help') {
-      const list = commands.map((command) => `/${command.name} - ${command.description}`).join('\n');
-      return replySafe(interaction, { embeds: [officialEmbed('Commandes disponibles', list)], ephemeral: true });
+      const embed = officialEmbed(
+        'Centre de commandement',
+        `Bienvenue dans le panneau de moderation de la **Gendarmerie EHRP - IS**.\n\nCes commandes permettent de traiter les incidents, proteger les salons sensibles et conserver une trace claire des interventions. L'acces est reserve aux personnels habilites : ${requiredRolesLabel()}.`,
+        DARK_BLUE
+      )
+        .addFields(
+          { name: '🔵 Commandement', value: '`/help` consulter ce panneau\n`/ping` verifier la disponibilite\n`/setup` definir les logs et le role mute\n`/config` regler les protections automatiques' },
+          { name: '🔷 Sanctions', value: '`/warn` avertissement officiel\n`/mute` mise sous silence temporaire\n`/unmute` levee de mute\n`/kick` exclusion du serveur\n`/ban` bannissement\n`/unban` levee de bannissement' },
+          { name: '🛡️ Securite', value: '`/clear` nettoyage de messages\n`/slowmode` cadence du salon\n`/lockdown` verrouillage operationnel\n`/lockrole` protection des roles\n`/lockchannel` protection des salons' }
+        );
+      return replySafe(interaction, { embeds: [embed], ephemeral: true });
     }
 
     if (interaction.commandName === 'ping') {
-      return replySafe(interaction, { embeds: [officialEmbed('Controle radio', `Latence: **${client.ws.ping} ms**\nEtat: **operationnel**`, WHITE)], ephemeral: true });
+      return replySafe(interaction, { embeds: [officialEmbed('Controle radio', `Liaison avec le centre de commandement etablie.\n\n**Latence radio :** ${client.ws.ping} ms\n**Etat du service :** operationnel\n**Surveillance :** ${presenceText}`, WHITE)], ephemeral: true });
     }
 
     if (interaction.commandName === 'setup') {
@@ -288,7 +311,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (logs) config.logChannelId = logs.id;
       if (muteRole) config.muteRoleId = muteRole.id;
       await saveStore();
-      return replySafe(interaction, { embeds: [officialEmbed('Configuration enregistree', 'Les parametres de moderation ont ete mis a jour.')], ephemeral: true });
+      return replySafe(interaction, { embeds: [officialEmbed('Configuration enregistree', 'Les parametres de moderation ont ete mis a jour avec succes.\n\nLe salon de journalisation et le role mute seront utilises pour les prochaines procedures automatiques et manuelles.')], ephemeral: true });
     }
 
     if (interaction.commandName === 'config') {
@@ -307,7 +330,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       config.warnings[user.id] = config.warnings[user.id] || [];
       config.warnings[user.id].push({ reason, moderator: interaction.user.id, date: new Date().toISOString() });
       await saveStore();
-      await notifyUser(user, 'Avertissement officiel', `Vous avez recu un avertissement sur **${interaction.guild.name}**.\nMotif: **${reason}**.`);
+      await notifyUser(user, 'Avertissement officiel', `Un avertissement officiel vient d'etre inscrit a votre dossier sur **${interaction.guild.name}**.\n\n**Motif retenu :** ${reason}\n\nCette mesure n'entraine pas d'exclusion immediate, mais elle constitue un rappel formel au reglement. Merci d'adopter un comportement conforme aux consignes de la communaute.`);
       await logAction(interaction.guild, officialEmbed('Avertissement', `Membre: ${user.tag}\nMotif: ${reason}\nAgent: ${interaction.user.tag}`, RED));
       return replySafe(interaction, { embeds: [officialEmbed('Avertissement transmis', `${user} a ete averti.`)] });
     }
@@ -328,7 +351,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const role = config.muteRoleId ? await interaction.guild.roles.fetch(config.muteRoleId).catch(() => null) : null;
       if (role) await member.roles.remove(role, reason).catch(() => null);
       await member.timeout(null, reason).catch(() => null);
-      await notifyUser(member.user, 'Fin de sanction', `Votre mute sur **${interaction.guild.name}** a ete retire.\nMotif: **${reason}**.`);
+      await notifyUser(member.user, 'Fin de sanction', `La mesure de mute appliquee sur **${interaction.guild.name}** vient d'etre levee.\n\n**Motif indique :** ${reason}\n\nVous pouvez de nouveau participer aux echanges. Merci de rester attentif aux consignes de moderation.`);
       await logAction(interaction.guild, officialEmbed('Unmute', `Membre: ${member.user.tag}\nAgent: ${interaction.user.tag}\nMotif: ${reason}`));
       return replySafe(interaction, { embeds: [officialEmbed('Mute retire', `${member} peut de nouveau participer.`)] });
     }
@@ -337,7 +360,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const member = interaction.options.getMember('membre');
       const reason = interaction.options.getString('raison') || 'Non precise';
       if (!member) return replySafe(interaction, { content: 'Membre introuvable.', ephemeral: true });
-      await notifyUser(member.user, 'Exclusion du serveur', `Vous avez ete exclu de **${interaction.guild.name}**.\nMotif: **${reason}**.`);
+      await notifyUser(member.user, 'Exclusion du serveur', `Une decision d'exclusion vient d'etre appliquee sur **${interaction.guild.name}**.\n\n**Nature de la mesure :** kick\n**Motif retenu :** ${reason}\n\nVous pourrez revenir uniquement si les conditions d'acces au serveur le permettent.`);
       await member.kick(reason);
       await logAction(interaction.guild, officialEmbed('Kick', `Membre: ${member.user.tag}\nAgent: ${interaction.user.tag}\nMotif: ${reason}`, RED));
       return replySafe(interaction, { embeds: [officialEmbed('Exclusion appliquee', `${member.user.tag} a ete exclu.`)] });
@@ -347,7 +370,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const user = interaction.options.getUser('membre', true);
       const reason = interaction.options.getString('raison') || 'Non precise';
       const days = interaction.options.getInteger('jours_messages') || 0;
-      await notifyUser(user, 'Bannissement du serveur', `Vous avez ete banni de **${interaction.guild.name}**.\nMotif: **${reason}**.`);
+      await notifyUser(user, 'Bannissement du serveur', `Une decision de bannissement vient d'etre appliquee sur **${interaction.guild.name}**.\n\n**Nature de la mesure :** ban\n**Motif retenu :** ${reason}\n\nCette sanction bloque votre acces au serveur jusqu'a nouvel ordre ou decision contraire de l'equipe habilitee.`);
       await interaction.guild.members.ban(user, { reason, deleteMessageSeconds: days * 86400 });
       await logAction(interaction.guild, officialEmbed('Ban', `Membre: ${user.tag}\nAgent: ${interaction.user.tag}\nMotif: ${reason}`, RED));
       return replySafe(interaction, { embeds: [officialEmbed('Bannissement applique', `${user.tag} a ete banni.`)] });

@@ -39,9 +39,10 @@ npm start
    - `DISCORD_TOKEN`
    - `CLIENT_ID`
    - `GUILD_ID`
-   - `REQUIRED_MOD_ROLE_ID=1508156771569504428`
+   - `REQUIRED_MOD_ROLE_IDS=1508156771569504428,1508184761380638820`
    - `REGISTER_COMMANDS_ON_START=true`
    - `REGISTER_GLOBAL_COMMANDS=true`
+   - `PRESENCE_TEXT=〃Gendarmerie EHRP - IS`
    - `OWNER_IDS`
    - `DEFAULT_LOG_CHANNEL_ID` optionnel
    - `DEFAULT_MUTE_ROLE_ID` optionnel
@@ -54,7 +55,7 @@ Publication des commandes slash sur le serveur ...
 ... commandes slash serveur publiees avec succes.
 Publication des commandes slash globales pour affichage sur le profil du bot...
 ... commandes slash globales publiees avec succes.
-Acces aux commandes reserve au role 1508156771569504428.
+Acces aux commandes reserve aux roles 1508156771569504428, 1508184761380638820.
 ```
 
 Tu peux aussi lancer `npm run deploy` localement si tu veux republier les commandes manuellement.
